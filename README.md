@@ -8,3 +8,6 @@ Setting up tensorflow for browser processing - in page
  ```yarn add @tensorflow/tfjs```  
 Setting up tensorflow for processing with node - Has native C++ bindings  
  ```yarn add @tensorflow/tfjs-node```  
+
+
+https://www.tensorflow.org/js/guide/nodejs
