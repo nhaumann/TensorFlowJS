@@ -3,8 +3,12 @@ import tf from '@tensorflow/tfjs-node'
 
 export const Make2DPrediction = async () => {
 
-    const carData = await GetCarData()
-    console.table(carData)
+    // const carData = await GetCarData()
+    // console.table(carData)
+
+    const seqModel = CreateModel();
+
+    console.table(seqModel.summary())
 }
 
 const CreateModel = () =>{
