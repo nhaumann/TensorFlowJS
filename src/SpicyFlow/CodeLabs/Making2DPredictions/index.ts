@@ -1,8 +1,7 @@
 import * as CarService from "./CarService"
 import * as tf from '@tensorflow/tfjs-node'
-import { input, tensor } from "@tensorflow/tfjs-node";
 import { Car } from "./types";
-
+import { Tensor1D } from "@tensorflow/tfjs-node";
 
 
 export const Make2DPrediction = async () => {
@@ -11,25 +10,55 @@ export const Make2DPrediction = async () => {
 
      const model = CreateModel();
      const preparedModelData = PrepareData(carData);
+
+     const trainedModel = await TrainModel(model, preparedModelData.inputs, preparedModelData.labels);
+     console.log("Done training")
+
+        const xs = tf.linspace(0, 1, 100);
+        const preds = model.predict(xs.reshape([100, 1])) as Tensor1D;
+        const unNormXs = xs
+        .mul(preparedModelData.inputMax.sub(preparedModelData.inputMin))
+        .add(preparedModelData.inputMin);
+  
+      const unNormPreds = preds
+        .mul(preparedModelData.labelMax.sub(preparedModelData.labelMin))
+        .add(preparedModelData.labelMin);
+
+    const predicted = Array.from(unNormPreds.dataSync())
+    const originalvsPredicted = Array.from(unNormXs.dataSync()).map((value, i) =>{
+        return {
+            horsepower: value,
+            mpg: predicted[i]
+        }
+    })
+
+    console.table(originalvsPredicted)
+
 }
 
 const TrainModel = (model: tf.Sequential, inputs: tf.Tensor<tf.Rank>, labels: tf.Tensor<tf.Rank>) =>{
-
     model.compile({
-        optimizer: tf.train.adam(6000000),
-        loss: tf.losses.absoluteDifference,
-        metrics: ['accuracy']
-    })
+        optimizer: tf.train.adam(),
+        loss: tf.losses.meanSquaredError,
+        metrics: ['mse'],
+      });
 
     const batchSize = 32;
-    const epochs  = 5000;
-    // return await model.fit
+    const epochs  = 25;
+     return model.fit(inputs, labels, 
+        {
+            batchSize,
+            epochs,
+            shuffle: true,
+        })
 
 }
 
 const CreateModel = () =>{
         const model = tf.sequential();
         model.add(tf.layers.dense({inputShape: [1], units: 1}))
+        model.add(tf.layers.dense({units: 1200, activation: 'hardSigmoid'}));
+        model.add(tf.layers.dense({units: 39020, activation: 'sigmoid'}));
         model.add(tf.layers.dense({units: 1}))
         return model;
 }
