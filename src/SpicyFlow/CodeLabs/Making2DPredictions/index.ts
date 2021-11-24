@@ -1,14 +1,30 @@
-import { GetCarData } from "./CarService"
-import tf from '@tensorflow/tfjs-node'
+import * as CarService from "./CarService"
+import * as tf from '@tensorflow/tfjs-node'
+import { input, tensor } from "@tensorflow/tfjs-node";
+import { Car } from "./types";
+
+
 
 export const Make2DPrediction = async () => {
 
-    // const carData = await GetCarData()
-    // console.table(carData)
+     const carData = await CarService.GetCarData()
 
-    const seqModel = CreateModel();
+     const model = CreateModel();
+     const preparedModelData = PrepareData(carData);
+}
 
-    console.table(seqModel.summary())
+const TrainModel = (model: tf.Sequential, inputs: tf.Tensor<tf.Rank>, labels: tf.Tensor<tf.Rank>) =>{
+
+    model.compile({
+        optimizer: tf.train.adam(6000000),
+        loss: tf.losses.absoluteDifference,
+        metrics: ['accuracy']
+    })
+
+    const batchSize = 32;
+    const epochs  = 5000;
+    return await model.fit
+
 }
 
 const CreateModel = () =>{
@@ -17,3 +33,39 @@ const CreateModel = () =>{
         model.add(tf.layers.dense({units: 1}))
         return model;
 }
+
+const PrepareData = (data: Car[]) =>
+    tf.tidy(() =>{
+        tf.util.shuffle(data); //Because we want to avoid any patterns that could be built into the dataset. Far less likely that a random pattern may arise that the training model may attach to.
+        
+        const inputs = data.map(d => d.horsepower)
+        const labels = data.map(d => d.mpg)
+
+        const inputTensor = tf.tensor2d(inputs, [inputs.length, 1])
+        const labelTensor = tf.tensor2d(labels, [labels.length, 1]) //Is this because we always need an additional constant value for bias? Otherwise we're short by a degree of freedom for our bias?
+
+        //We probably need to use tensor mth functions to take advantage of faster processing provided by their library's bindings.
+        const inputMax = inputTensor.max();
+        const inputMin = inputTensor.min();
+        const labelMax = labelTensor.max();
+        const labelMin = labelTensor.min();
+
+        //Normalize values! (val - min)/(max - min). Is partially normal good enough? Why is a range of 1 best? Why not divide by max and get, say, a range of 0.5 to 1? Why is 0 to 1 special? why normalize at all? This surely is meaningless for one-dimension?
+        //As suspected, normalization is meaningless here because there is only one scale. 
+        //Normalization is required when you have input values on *different* scales, such as age and income. 
+        //Normalization prevents the weighting of one dimension over another based on scale of values.
+        //https://medium.com/@urvashilluniya/why-data-normalization-is-necessary-for-machine-learning-models-681b65a05029
+        //According to Tensorflow documentation, the models are also designed for not-too-big of numbers. Possibly, for optimization, using only a byte at a time (it's possible in C, if you're reading this Nick!)
+        //https://www.tutorialspoint.com/cprogramming/c_bit_fields.htm
+        const normalInput = inputTensor.sub(inputMin).div(inputMax.sub(inputMin));
+        const normalLabels = labelTensor.sub(labelMin).div(labelMax.sub(labelMin));
+
+        return {
+            inputs: normalInput,
+            labels: normalLabels,
+            inputMax,
+            inputMin,
+            labelMax,
+            labelMin,
+          }
+    })
