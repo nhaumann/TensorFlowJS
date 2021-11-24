@@ -1,3 +1,6 @@
+import { Make2DPrediction } from './CodeLabs/Making2DPredictions/index';
+
+
 export const SpicyFlow = () =>{
-    console.log("Hello!");
+    Make2DPrediction()
 }

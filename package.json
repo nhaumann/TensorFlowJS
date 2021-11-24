@@ -1,6 +1,9 @@
 {
   "dependencies": {
     "@tensorflow/tfjs-node": "^3.11.0",
-    "@types/node": "^16.11.10"
+    "@types/node": "^16.11.10",
+    "@types/node-fetch": "2.5.12",
+    "node-fetch": "2.6.6",
+    "prettier": "^2.4.1"
   }
 }
