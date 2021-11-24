@@ -23,7 +23,7 @@ const TrainModel = (model: tf.Sequential, inputs: tf.Tensor<tf.Rank>, labels: tf
 
     const batchSize = 32;
     const epochs  = 5000;
-    return await model.fit
+    // return await model.fit
 
 }
 

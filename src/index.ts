@@ -1,6 +1,7 @@
-import { NickFlow } from "./NickFlow";
-import { SpicyFlow } from "./SpicyFlow";
+import { LoadSecrets } from "./utilities/secrets";
+import { GetUserPath } from './utilities/environment-utilities';
 
-SpicyFlow();
+LoadSecrets()
+const userExecutionPath = GetUserPath()
 
-// NickFlow();
+userExecutionPath()
