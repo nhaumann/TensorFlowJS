@@ -3,7 +3,6 @@ import * as tf from '@tensorflow/tfjs-node'
 import { Car } from "./types";
 import { Tensor1D } from "@tensorflow/tfjs-node";
 
-
 export const Make2DPrediction = async () => {
 
      const carData = await CarService.GetCarData()
@@ -25,14 +24,18 @@ export const Make2DPrediction = async () => {
         .add(preparedModelData.labelMin);
 
     const predicted = Array.from(unNormPreds.dataSync())
-    const originalvsPredicted = Array.from(unNormXs.dataSync()).map((value, i) =>{
+
+    const predictedValues = Array.from(unNormXs.dataSync()).map((value, i) =>{
         return {
             horsepower: value,
             mpg: predicted[i]
         }
-    })
+    }).sort((a, b) => a.horsepower > b.horsepower? 1 : a.horsepower < b.horsepower? -1 : 0)
 
-    console.table(originalvsPredicted)
+    const originalValues = carData.sort((a, b) => a.horsepower > b.horsepower? 1 : a.horsepower < b.horsepower? -1 : 0)
+
+    console.table(originalValues)
+    console.table(predictedValues)
 
 }
 
@@ -43,8 +46,8 @@ const TrainModel = (model: tf.Sequential, inputs: tf.Tensor<tf.Rank>, labels: tf
         metrics: ['mse'],
       });
 
-    const batchSize = 32;
-    const epochs  = 25;
+    const batchSize = 90;
+    const epochs  = 250;
      return model.fit(inputs, labels, 
         {
             batchSize,
@@ -57,9 +60,33 @@ const TrainModel = (model: tf.Sequential, inputs: tf.Tensor<tf.Rank>, labels: tf
 const CreateModel = () =>{
         const model = tf.sequential();
         model.add(tf.layers.dense({inputShape: [1], units: 1}))
-        model.add(tf.layers.dense({units: 1200, activation: 'hardSigmoid'}));
-        model.add(tf.layers.dense({units: 39020, activation: 'sigmoid'}));
-        model.add(tf.layers.dense({units: 1}))
+        model.add(tf.layers.dense({activation: 'relu', units: 5}))
+        model.add(tf.layers.dense({units: 5}));
+        model.add(tf.layers.dense({activation: 'elu', units: 5}))
+        model.add(tf.layers.dense({units: 5}));
+        model.add(tf.layers.dense({activation: 'linear', units: 5}))
+        model.add(tf.layers.dense({units: 5}));
+        model.add(tf.layers.dense({activation: 'mish', units: 5}))
+        model.add(tf.layers.dense({units: 5}));
+        model.add(tf.layers.dense({activation: 'relu6', units: 5}))
+        model.add(tf.layers.dense({units: 5}));
+        model.add(tf.layers.dense({activation: 'selu', units: 5}))
+        model.add(tf.layers.dense({units: 5}));
+        model.add(tf.layers.dense({activation: 'softmax', units: 5}))
+        model.add(tf.layers.dense({units: 5}));
+        model.add(tf.layers.dense({activation: 'softplus', units: 5}))
+        model.add(tf.layers.dense({units: 5}));
+        model.add(tf.layers.dense({activation: 'softmax', units: 5}))
+        model.add(tf.layers.dense({units: 5}));
+        model.add(tf.layers.dense({activation: 'softsign', units: 5}))
+        model.add(tf.layers.dense({units: 5}));
+        model.add(tf.layers.dense({activation: 'swish', units: 5}))
+        model.add(tf.layers.dense({units: 5}));
+        model.add(tf.layers.dense({activation: 'tanh', units: 5}))
+        model.add(tf.layers.dense({units: 5}));
+        model.add(tf.layers.dense({activation: 'relu', units: 5}))
+        model.add(tf.layers.dense({units: 5}));
+        model.add(tf.layers.dense({units: 1}));
         return model;
 }
 

@@ -1,6 +1,6 @@
 export class Car {
-    mpg: number
     horsepower: number
+    mpg: number
 
     constructor(googleCar: TGoogleCar){
         this.mpg = googleCar.Miles_per_Gallon
