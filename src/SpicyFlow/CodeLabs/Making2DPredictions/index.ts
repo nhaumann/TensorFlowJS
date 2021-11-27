@@ -1,48 +1,100 @@
-import * as CarService from "./CarService"
+import * as  CarService from './CarService'
 import * as tf from '@tensorflow/tfjs-node'
 import { Car } from "./types";
 import { Tensor1D } from "@tensorflow/tfjs-node";
 
 export const Make2DPrediction = async () => {
 
-     const carData = await CarService.GetCarData()
+    const carData = await CarService.GetCarData()
 
-     const model = CreateModel();
-     const preparedModelData = PrepareData(carData);
+    await use4DModel(carData);
 
-     const trainedModel = await TrainModel(model, preparedModelData.inputs, preparedModelData.labels);
-     console.log("Done training")
+     //await Use2DModel(carData, model)
+}
+const use4DModel = async (carData: Car[]) =>{
+    const model = CreateModel4DModel();
+    const preparedData = PrepareMultiDimensionalData(carData)
 
-        const xs = tf.linspace(0, 1, 100);
-        const preds = model.predict(xs.reshape([100, 1])) as Tensor1D;
-        const unNormXs = xs
-        .mul(preparedModelData.inputMax.sub(preparedModelData.inputMin))
-        .add(preparedModelData.inputMin);
-  
-      const unNormPreds = preds
-        .mul(preparedModelData.labelMax.sub(preparedModelData.labelMin))
-        .add(preparedModelData.labelMin);
+    const trainedModel = await Train4DModel(model, preparedData.dataTensor, preparedData.labels)
+    console.log("Done training")
 
-    const predicted = Array.from(unNormPreds.dataSync())
+    //Create 3 sets of linspaces
+    const randomvalues = tf.linspace(0, 1, 300).reshape([100, 3])
 
-    const predictedValues = Array.from(unNormXs.dataSync()).map((value, i) =>{
-        return {
-            horsepower: value,
-            mpg: predicted[i]
-        }
-    }).sort((a, b) => a.horsepower > b.horsepower? 1 : a.horsepower < b.horsepower? -1 : 0)
 
-    const originalValues = carData.sort((a, b) => a.horsepower > b.horsepower? 1 : a.horsepower < b.horsepower? -1 : 0)
+    const predictions = model.predict(randomvalues) as tf.Tensor<tf.Rank>
 
-    console.table(originalValues)
-    console.table(predictedValues)
+    // const valyeArray = Array.from(randomvalues.dataSync(), )
 
+    // const UNHP = Array.from(randomvalues.mul(preparedData.hpMax - preparedData.hpMin).add(preparedData.hpMin).dataSync())
+    // const UNYear = Array.from(yearValues.mul(preparedData.yearMax - preparedData.yearMin).add(preparedData.yearMin).dataSync())
+    // const UNWeight = Array.from(weightValues.mul(preparedData.weightMax - preparedData.weightMin).add(preparedData.weightMin).dataSync())
+    // const UNPredictions = Array.from(predictions.mul(preparedData.labelMax - preparedData.labelMin).add(preparedData.labelMin).dataSync())
+
+    // const dataSet = UNHP.map((v, i) =>({
+    //     horsepower: v,
+    //     year: UNYear[i],
+    //     weight: UNWeight[i],
+    //     mpg: UNPredictions[i]
+    // } as Car))
+
+    // console.table(dataSet)
 }
 
-const TrainModel = (model: tf.Sequential, inputs: tf.Tensor<tf.Rank>, labels: tf.Tensor<tf.Rank>) =>{
+const Use2DModel = async (carData: Car[]) =>{
+    const model = CreateModel2DModel();
+    const preparedModelData = PrepareData(carData);
+
+    const trainedModel = await Train2DModel(model, preparedModelData.inputs, preparedModelData.labels);
+    console.log("Done training")
+
+       const xs = tf.linspace(0, 1, 100);
+       const preds = model.predict(xs.reshape([100, 1])) as Tensor1D;
+       const unNormXs = xs
+       .mul(preparedModelData.inputMax.sub(preparedModelData.inputMin))
+       .add(preparedModelData.inputMin);
+ 
+     const unNormPreds = preds
+       .mul(preparedModelData.labelMax.sub(preparedModelData.labelMin))
+       .add(preparedModelData.labelMin);
+
+   const predicted = Array.from(unNormPreds.dataSync())
+
+   const predictedValues = Array.from(unNormXs.dataSync()).map((value, i) =>{
+       return {
+           horsepower: value,
+           mpg: predicted[i]
+       }
+   }).sort((a, b) => a.horsepower > b.horsepower? 1 : a.horsepower < b.horsepower? -1 : 0)
+
+   const originalValues = carData.sort((a, b) => a.horsepower > b.horsepower? 1 : a.horsepower < b.horsepower? -1 : 0)
+
+   console.table(originalValues)
+   console.table(predictedValues)
+}
+
+const Train4DModel = (model: tf.Sequential, inputs: tf.Tensor<tf.Rank>, labels: tf.Tensor<tf.Rank>) =>{
     model.compile({
         optimizer: tf.train.adam(),
         loss: tf.losses.meanSquaredError,
+        metrics: ['mse'],
+      });
+
+    const batchSize = 90;
+    const epochs  = 500;
+     return model.fit(inputs, labels, 
+        {
+            batchSize,
+            epochs,
+            shuffle: true,
+        })
+
+}
+
+const Train2DModel = (model: tf.Sequential, inputs: tf.Tensor<tf.Rank>, labels: tf.Tensor<tf.Rank>) =>{
+    model.compile({
+        optimizer: tf.train.adam(0.1),
+        loss: tf.losses.absoluteDifference,
         metrics: ['mse'],
       });
 
@@ -57,7 +109,40 @@ const TrainModel = (model: tf.Sequential, inputs: tf.Tensor<tf.Rank>, labels: tf
 
 }
 
-const CreateModel = () =>{
+const CreateModel4DModel = () =>{
+    const model = tf.sequential();
+    model.add(tf.layers.dense({inputShape: [3], units: 3}))
+    model.add(tf.layers.dense({activation: 'relu', units: 6}))
+    model.add(tf.layers.dense({units: 12}));
+    model.add(tf.layers.dense({activation: 'elu', units: 18}))
+    model.add(tf.layers.dense({units: 24}));
+    model.add(tf.layers.dense({activation: 'linear', units: 30}))
+    model.add(tf.layers.dense({units: 36}));
+    model.add(tf.layers.dense({activation: 'mish', units: 30}))
+    model.add(tf.layers.dense({units: 30}));
+    model.add(tf.layers.dense({activation: 'relu6', units: 24}))
+    model.add(tf.layers.dense({units: 24}));
+    model.add(tf.layers.dense({activation: 'selu', units: 18}))
+    model.add(tf.layers.dense({units: 18}));
+    model.add(tf.layers.dense({activation: 'softmax', units: 12}))
+    model.add(tf.layers.dense({units: 12}));
+    model.add(tf.layers.dense({activation: 'softplus', units: 12}))
+    model.add(tf.layers.dense({units: 12}));
+    model.add(tf.layers.dense({activation: 'softmax', units: 9}))
+    model.add(tf.layers.dense({units: 9}));
+    model.add(tf.layers.dense({activation: 'softsign', units: 9}))
+    model.add(tf.layers.dense({units: 9}));
+    model.add(tf.layers.dense({activation: 'swish', units: 6}))
+    model.add(tf.layers.dense({units: 6}));
+    model.add(tf.layers.dense({activation: 'tanh', units: 6}))
+    model.add(tf.layers.dense({units: 6}));
+    model.add(tf.layers.dense({activation: 'relu', units: 3}))
+    model.add(tf.layers.dense({units: 3}));
+    model.add(tf.layers.dense({units: 1}));
+    return model;
+}
+
+const CreateModel2DModel = () =>{
         const model = tf.sequential();
         model.add(tf.layers.dense({inputShape: [1], units: 1}))
         model.add(tf.layers.dense({activation: 'relu', units: 5}))
@@ -125,3 +210,53 @@ const PrepareData = (data: Car[]) =>
             labelMin,
           }
     })
+
+    const PrepareMultiDimensionalData = (data: Car[]) =>
+    tf.tidy(() =>{
+        tf.util.shuffle(data); //Because we want to avoid any patterns that could be built into the dataset. Far less likely that a random pattern may arise that the training model may attach to.
+       
+        //normalize all values
+        const hpMin = Math.min(...data.map(d => d.horsepower))
+        const hpMax = Math.max(...data.map(d => d.horsepower))
+
+        const yearMin = Math.min(...data.map(d => d.year))
+        const yearMax = Math.max(...data.map(d => d.year))
+
+        const weightMin = Math.min(...data.map(d => d.weight))
+        const weightMax = Math.max(...data.map(d => d.weight))
+
+        const labelMin = Math.min(...data.map(d => d.mpg))
+        const labelMax = Math.max(...data.map(d => d.mpg))
+
+        const normalData = data.map(d => ({
+            horsepower: normalize(d.horsepower, hpMin, hpMax),
+            year: normalize(d.year, yearMin, yearMax),
+            weight: normalize(d.weight, weightMin, weightMax),
+            mpg: normalize(d.mpg, labelMin, labelMax)
+        } as Car))
+
+        //Proper way to create tensor with 3 dimensions?
+        const dataTensor = tf.tensor(normalData.map(d => [d.horsepower, d.weight, d.year]), [normalData.length, 3])
+
+        const labelTensor = tf.tensor2d(normalData.map(d => d.mpg), [normalData.length, 1])
+
+        return {
+            dataTensor,
+            labels: labelTensor,
+            hpMin,
+            hpMax,
+            yearMin,
+            yearMax,
+            weightMin,
+            weightMax,
+            labelMin,
+            labelMax
+        }
+    })
+
+
+    const normalize = (value: number, min: number, max: number) =>{
+        if(!min || !max) return value;
+
+        return (value - min) / (max-min)
+    }
